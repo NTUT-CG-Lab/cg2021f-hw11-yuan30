@@ -88,36 +88,13 @@ class threejsViewer {
         }
 
         //�Ѽv����ƥͦ��ҫ�
-        // this.renderVolume = function (volume, colormap, arg) {
-
-        //     const name = 'volume'
-        //     let dims = volume.dims
-        //     let uniforms = null
-        //     let mesh = this.scene.getObjectByName(name)
-        //     let scale = 1 / Math.max(...dims)
-
-        //     if (mesh == null) {
-        //         // �ҫ���l��
-        //     }
-        //     else if (volume.used && uniforms["u_sizeEnable"].value != 1) {
-        //         // Size data��l��
-        //     }
-        //     else if (volume.used) {
-        //         // ��s�Ѽ�(�]�tsize data)
-        //     }
-        //     else {
-        //         // ��s�Ѽ�
-        //     }
-           
-        //     this.renderScene()
-        // }
         this.renderVolume = function (volume, colormap, arg) {
 
             const name = 'volume'
             let dims = volume.dims
             let uniforms = null
-            let mesh = this.scene.getObjectByName(name)
-            //在陣列前加... 等於 dims[0],dims[1]...將所有值取出來
+            let mesh = this.scene.getObjectByName(name) 
+            //在陣列前加3個點， ...dims 等於 dims[0],dims[1]...,dims[n-1]將所有值取出來
             //再透過 Math.max 找陣列最大值
             let scale = 1 / Math.max(...dims) 
 
@@ -129,9 +106,9 @@ class threejsViewer {
 
                 //Material
                 let shader = VolumeRenderShader1
-                uniforms = THREE.UniformsUtils.clone(shader.Uniforms)
+                uniforms = THREE.UniformsUtils.clone(shader.uniforms)
 
-                const texture = new DataTexture3D(volume.alpha,
+                const texture = new THREE.DataTexture3D(volume.alpha,
                      dims[0], dims[1],dims[2])
 
                 texture.format = THREE.RedFormat
@@ -139,17 +116,16 @@ class threejsViewer {
                 texture.minFilter = texture.magFilter = THREE.LinearFilter
                 
                 const cmtextures = new THREE.DataTexture(colormap, 256, 1, THREE.RGBAFormat)
-                // texture.format = THREE.RedFormat
-                // texture.type = THREE.UnsignedByteType
+
                 // shader
                 uniforms["u_data"].value = texture
                 uniforms["u_size"].value.set(...dims)
                 uniforms["u_cmdata"].value = cmtextures
                 uniforms["u_sizeEnable"].value = 0
-                //uniforms["u_sizeData"].value = null
+                uniforms["u_sizeData"].value = null
 
                 uniforms["u_clim"].value.set(arg.cli_min, arg.cli_max)
-                uniforms["u_renderstyle"].value = arg.renderType //0: MIP, 1: 150
+                uniforms["u_renderstyle"].value = arg.renderType //0: MIP, 1: ISO
                 uniforms["u_renderthreshold"].value = arg.isovalue
 
                 const material = new THREE.ShaderMaterial({
@@ -161,7 +137,7 @@ class threejsViewer {
 
                 mesh = new THREE.Mesh(geometry, material)
                 mesh.name = name
-                mesh.position.set(0, 1, 0)
+                mesh.position.set(0, 0.5, 0)
                 mesh.scale.set(scale, scale, scale)
 
                 this.scene.add(mesh)
@@ -171,14 +147,18 @@ class threejsViewer {
 
                 const cmtextures = new THREE.DataTexture(colormap, 256, 1, THREE.RGBAFormat)
                 uniforms["u_cmdata"].value = cmtextures
+                //or
+                // uniforms["u_cmdata"].value.image = { data: colormap }
+                // uniforms["u_cmdata"].value.needUpdate = true
 
                 uniforms["u_renderstyle"].value = arg.renderType
+                uniforms["u_renderthreshold"].value = arg.isovalue
             }
 
             if (volume.used) {
                 uniforms = mesh.material.uniforms
                 if (uniforms["u_sizeEnable"] == 0) {
-                    //initial
+                    //initial 設定 texture
 
                     let texture = new THREE.DataTexture3D(volume.sizeData, ...dims)
                     texture.format = THREE.RedFormat
@@ -188,7 +168,8 @@ class threejsViewer {
                     uniforms["u_sizeEnable"].value = 1
                     uniforms["u_sizeData"].value = texture
                 } else {
-                    uniforms["u_sizeEnable"].value.images = { data: volume.sizeData }
+                    //not first time. just need to update texture data.
+                    uniforms["u_sizeData"].value.images = { data: volume.sizeData }
                     uniforms["u_sizeData"].value.needUpdate = true
                 }
             }
